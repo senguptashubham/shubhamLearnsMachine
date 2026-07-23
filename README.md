@@ -1,6 +1,6 @@
 # shubhamLearnsMachine
 
-A log of my machine learning / deep learning learning process — small scripts and projects as I work through concepts, not a polished library. Each subfolder is a self-contained topic.
+A learning memoir of my AI ML journey — small scripts and projects as I work through concepts, not a polished library. Each subfolder is a self-contained topic.
 
 ## Contents
 
