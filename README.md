@@ -7,6 +7,7 @@ A learning memoir of my AI ML journey — small scripts and projects as I work t
 | Folder | What's in it |
 |---|---|
 | [`pytorch-basics/`](pytorch-basics/) | Small scripts covering PyTorch tensor fundamentals — creation, numpy interop, device placement, indexing/broadcasting, and autograd. |
+| [`mnist_pytorch_mlp/`](mnist_pytorch_mlp/) | A custom MLP (`nn.Module`) trained on MNIST, built step-by-step: manual training loop → reusable training function → comparing Full-batch vs Mini-batch vs Stochastic Gradient Descent on convergence speed and overfitting risk. |
 | [`mnist-numpy-ann/`](mnist-numpy-ann/) | A neural network built from scratch in raw NumPy (forward pass, backprop, gradient descent — no autograd frameworks) trained on MNIST digit classification. Includes the debugging process and training results. |
 
 ## Setup
