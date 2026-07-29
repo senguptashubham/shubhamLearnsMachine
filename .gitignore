@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 .vscode/
 *.npz
+.pytest_cache/
+cnn/data/
