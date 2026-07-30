@@ -14,6 +14,7 @@ def make_conv_pair() -> Callable[..., tuple]:
     my_conv = MyConv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, padding=padding, stride=stride)
     ref_conv = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, padding=padding, stride=stride)
     ref_conv.weight.data = my_conv.weight.data.clone()
+    assert ref_conv.bias is not None
     ref_conv.bias.data = my_conv.bias.data.clone()
     return x, my_conv, ref_conv
   return _make
