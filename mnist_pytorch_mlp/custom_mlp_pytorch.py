@@ -152,6 +152,7 @@ def train_one_config(batch_size, num_epochs, X, y, lr=0.001, X_val=None, y_val=N
       print(f"Testing Loss after epoch {epoch} is {val_loss}")
       val_loss_history.append(round(val_loss, 4))
       predicted_val = torch.argmax(y_val_pred, dim=1)
+      assert y_val is not None
       true_labels_val = torch.argmax(y_val, dim=1)
       correct_val = (predicted_val == true_labels_val).sum().item()
       val_accuracy = round(100 * correct_val / y_val.size(0), 2)
@@ -173,7 +174,7 @@ else:
   epoch_batch_config = {"Full-batch": (X_train_tensor.size(0), 40), "Mini-batch": (64, 20), "Stochastic": (1, 5)}
   results = {"Full-batch":[], "Mini-batch":[], "Stochastic":[]}
   for batch_type, config in epoch_batch_config.items():
-    results[batch_type] = train_one_config(config[0], config[1], X_train_tensor, y_train_tensor, 0.001, X_test_tensor, y_test_tensor)
+    results[batch_type] = list(train_one_config(config[0], config[1], X_train_tensor, y_train_tensor, 0.001, X_test_tensor, y_test_tensor))
     print(f"For the Batch type: {batch_type}")
     print(f"Training loss data: {results[batch_type][0]}\nTraining accuracy data:{results[batch_type][1]}\nTraining time data: {results[batch_type][2]}")
     print(f"Testing loss data: {results[batch_type][3]}\nTesting accuracy data:{results[batch_type][4]}\n")
