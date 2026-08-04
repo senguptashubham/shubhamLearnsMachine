@@ -13,9 +13,11 @@ class HandRNNCell(nn.Module):
 
   def __init__(self, input_dim, hidden_dim):
     super().__init__()
-    self.Wxh = nn.Parameter(torch.randn(hidden_dim, input_dim))
-    self.Whh = nn.Parameter(torch.randn(hidden_dim, hidden_dim))
-    self.bh = nn.Parameter(torch.randn(hidden_dim))
+    self.Wxh = nn.Parameter(torch.empty(hidden_dim, input_dim))
+    nn.init.xavier_uniform_(self.Wxh)
+    self.Whh = nn.Parameter(torch.empty(hidden_dim, hidden_dim))
+    nn.init.xavier_uniform_(self.Whh)
+    self.bh = nn.Parameter(torch.zeros(hidden_dim))
 
   def forward(self, x_t, h_prev):
     x_t = x_t @ self.Wxh.T
