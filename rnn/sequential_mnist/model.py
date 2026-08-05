@@ -34,7 +34,10 @@ class SequentialMNISTRNN(nn.Module):
 
   def forward(self, x):  # x: (B, T), one flattened pixel sequence per row
     B, T = x.shape[0], x.shape[1]
-    h_prev = torch.zeros(B, self.hidden_dim)  # fresh memory per batch, not per weight
+    # device=x.device -- match whatever device the input actually landed on,
+    # rather than hardcoding/storing a device on the model. Avoids a mismatch
+    # if x is on cuda but this fresh zeros tensor defaulted to cpu.
+    h_prev = torch.zeros(B, self.hidden_dim, device=x.device)  # fresh memory per batch, not per weight
     for t in range(T):
       x_t = x[:, t].unsqueeze(1)  # (B,) -> (B, 1) = (B, input_dim)
       h_t = self.rnn_cell.forward(x_t=x_t, h_prev=h_prev)
@@ -59,8 +62,8 @@ class SequentialMNISTLSTM(nn.Module):
 
   def forward(self, x):  # x: (B, T), one flattened pixel sequence per row
     B, T = x.shape[0], x.shape[1]
-    h_prev = torch.zeros(B, self.hidden_dim)
-    c_prev = torch.zeros(B, self.hidden_dim)
+    h_prev = torch.zeros(B, self.hidden_dim, device=x.device)
+    c_prev = torch.zeros(B, self.hidden_dim, device=x.device)
     for t in range(T):
       x_t = x[:, t].unsqueeze(1)  # (B,) -> (B, 1) = (B, input_dim)
       h_t, c_t = self.lstm_cell.forward(x_t=x_t, h_prev=h_prev, c_prev=c_prev)

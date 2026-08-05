@@ -6,13 +6,14 @@ from model import SequentialMNISTRNN, SequentialMNISTLSTM
 from data import build_dataloader
 
 
-def train_one_epoch(model, dataloader, optimizer, criterion, clip_norm=5.0):
+def train_one_epoch(model, dataloader, optimizer, criterion, device, clip_norm=5.0):
   model.train()
   train_loss = 0
   epoch_correct = 0
   epoch_total = 0
 
   for images, labels in dataloader:
+    images, labels = images.to(device), labels.to(device)
     # zero-grad -> forward pass -> loss -> backward -> clip -> step
     optimizer.zero_grad()
     logits = model(images)
@@ -38,7 +39,7 @@ def train_one_epoch(model, dataloader, optimizer, criterion, clip_norm=5.0):
   return avg_loss, accuracy
 
 
-def evaluate(model, dataloader, criterion):
+def evaluate(model, dataloader, criterion, device):
   model.eval()
   eval_loss = 0
   eval_total = 0
@@ -46,6 +47,7 @@ def evaluate(model, dataloader, criterion):
 
   with torch.no_grad():
     for images, labels in dataloader:
+      images, labels = images.to(device), labels.to(device)
       logits = model(images)
       loss = criterion(logits, labels)
 
@@ -60,7 +62,11 @@ def evaluate(model, dataloader, criterion):
   return avg_loss, accuracy
 
 
-def train(model, train_loader, val_loader, epochs, lr=1e-3, clip_norm=5.0):
+def train(model, train_loader, val_loader, epochs, device, lr=1e-3, clip_norm=5.0):
+  # move the model ONCE, here, so every caller (run_experiments.py, the smoke
+  # test below) gets correct device placement without having to remember it
+  # themselves -- harmless to call even if the model's already on device
+  model = model.to(device)
   # optimizer/criterion created ONCE, outside the epoch loop -- optimizer
   # carries momentum/Adam state across epochs, recreating it per epoch would
   # silently reset that state every time
@@ -72,11 +78,11 @@ def train(model, train_loader, val_loader, epochs, lr=1e-3, clip_norm=5.0):
   val_accuracy_history = []
 
   for epoch in range(epochs):
-    train_loss, train_accuracy = train_one_epoch(model=model, dataloader=train_loader, optimizer=optimizer, criterion=criterion, clip_norm=clip_norm)
+    train_loss, train_accuracy = train_one_epoch(model=model, dataloader=train_loader, optimizer=optimizer, criterion=criterion, device=device, clip_norm=clip_norm)
     train_loss_history.append(train_loss)
     train_accuracy_history.append(train_accuracy)
 
-    val_loss, val_accuracy = evaluate(model=model, dataloader=val_loader, criterion=criterion)
+    val_loss, val_accuracy = evaluate(model=model, dataloader=val_loader, criterion=criterion, device=device)
     val_loss_history.append(val_loss)
     val_accuracy_history.append(val_accuracy)
 
@@ -95,6 +101,9 @@ if __name__ == "__main__":
   # BOTH cells, on the fastest (T=64) variant -- confirms the training loop
   # itself is healthy (init fix included) for each architecture independently,
   # before run_experiments.py runs the full 6-config grid across all 3 T's.
+  device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+  print("using device:", device)
+
   H = 64
   dataloaders = build_dataloader(batch_size=64)
   train_loader, val_loader, test_loader = dataloaders['crop8']  # T=64, fastest to smoke-test
@@ -103,6 +112,6 @@ if __name__ == "__main__":
   for label, model_cls in [("RNN", SequentialMNISTRNN), ("LSTM", SequentialMNISTLSTM)]:
     print(f"--- smoke test: {label} ---")
     model = model_cls(input_dim=1, hidden_dim=H, num_classes=10)
-    model, history = train(model, train_loader, val_loader, epochs=2)
-    test_loss, test_accuracy = evaluate(model, test_loader, criterion)
+    model, history = train(model, train_loader, val_loader, epochs=2, device=device)
+    test_loss, test_accuracy = evaluate(model, test_loader, criterion, device=device)
     print(f"{label} smoke test done | test loss {test_loss:.4f} acc {test_accuracy:.2f}%\n")
