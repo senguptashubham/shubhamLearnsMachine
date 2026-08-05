@@ -5,3 +5,4 @@ __pycache__/
 .pytest_cache/
 cnn/cifar10/data/
 cnn/cifar10/results/checkpoints/
+rnn/sequential_mnist/data/
