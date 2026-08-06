@@ -24,6 +24,8 @@ consequence.
   part, decoupled from visualization on purpose.
 - **`visualize_results.py`** — reads the saved JSON and produces both plots. Can be
   re-run freely to iterate on the charts without retraining anything.
+- **`benchmark_speedup.py`** — one-off benchmark of a training-speed optimization (see
+  below). Not part of the regular pipeline, kept for reference.
 - **`results/`** — `experiment_results.json` (raw numbers + full per-epoch history for
   all 6 runs), `accuracy_vs_T.png`, `train_val_curves.png`, `writeup.md` (full analysis).
 
@@ -36,6 +38,26 @@ immediately (pre-activation variance scales with `hidden_dim`), killing gradient
 before sequence length ever became the issue. Fixed with Xavier-uniform init and
 zero-initialized biases in both Phase 1 cell files. See `results/writeup.md` for how this
 was diagnosed.
+
+## A training-speed optimization (post-writeup)
+
+`HandRNNCell`/`HandLSTMCell` gained a second interface: `project_input(x)` +
+`step(...)`, alongside the original `forward(x_t, h_prev, ...)` (kept untouched as
+the validated reference — see each file's `__main__` block for an `allclose` check
+between both paths). The idea: `x_t @ Wxh.T` doesn't depend on `h_prev`, so it can
+be computed for the *entire* sequence in one batched matmul before the timestep
+loop, instead of once per step inside it. Only the genuinely recurrent term
+(`Whh @ h_prev`) has to stay in the loop. `model.py`'s `forward()` methods use this
+path now.
+
+Benchmarked in `benchmark_speedup.py` (RNN, `T=196`, 5 epochs): **~1.1-1.3x**
+faster — real, but modest, since the unavoidable recurrent matmul and the Python
+loop's own per-iteration overhead dominate more than the single matmul removed.
+`torch.compile` was also tried as a bigger potential win (it fuses ops via a
+graph compiler, directly targeting the same kernel-launch-count bottleneck) but
+failed outright: no working Triton install on Windows, which the default backend
+requires. Not pursued further — getting Triton working on Windows is a
+disproportionate side-quest for the likely payoff.
 
 ## Results
 

@@ -34,13 +34,15 @@ class SequentialMNISTRNN(nn.Module):
 
   def forward(self, x):  # x: (B, T), one flattened pixel sequence per row
     B, T = x.shape[0], x.shape[1]
-    # device=x.device -- match whatever device the input actually landed on,
-    # rather than hardcoding/storing a device on the model. Avoids a mismatch
-    # if x is on cuda but this fresh zeros tensor defaulted to cpu.
+    # device=x.device -- match whatever device the input actually landed on
     h_prev = torch.zeros(B, self.hidden_dim, device=x.device)  # fresh memory per batch, not per weight
+    # project the input side for the WHOLE sequence in one matmul, since it doesn't
+    # depend on h_prev -- only the recurrent Whh @ h_prev term inside the loop does.
+    # (B, T) -> (B, T, input_dim) -> (B, T, H)
+    x_reshaped = x.unsqueeze(2)
+    x_proj = self.rnn_cell.project_input(x_reshaped)
     for t in range(T):
-      x_t = x[:, t].unsqueeze(1)  # (B,) -> (B, 1) = (B, input_dim)
-      h_t = self.rnn_cell.forward(x_t=x_t, h_prev=h_prev)
+      h_t = self.rnn_cell.step(x_proj_t=x_proj[:,t], h_prev=h_prev)
       h_prev = h_t
     logits = self.classifier.forward(h_prev)  # only the FINAL h_t reaches the head
     return logits
@@ -64,9 +66,12 @@ class SequentialMNISTLSTM(nn.Module):
     B, T = x.shape[0], x.shape[1]
     h_prev = torch.zeros(B, self.hidden_dim, device=x.device)
     c_prev = torch.zeros(B, self.hidden_dim, device=x.device)
+    # project the input side (all 4 gates) for the WHOLE sequence in one shot each --
+    # same reasoning as the RNN: none of these four depend on h_prev.
+    x_reshaped = x.unsqueeze(2)
+    x_dict = self.lstm_cell.project_input(x_reshaped)
     for t in range(T):
-      x_t = x[:, t].unsqueeze(1)  # (B,) -> (B, 1) = (B, input_dim)
-      h_t, c_t = self.lstm_cell.forward(x_t=x_t, h_prev=h_prev, c_prev=c_prev)
+      h_t, c_t = self.lstm_cell.step(xf=x_dict['x_f'][:,t], xi=x_dict['x_i'][:,t], xg=x_dict['x_g'][:,t], xo=x_dict['x_o'][:,t], h_prev=h_prev, c_prev=c_prev)
       h_prev, c_prev = h_t, c_t
     # only h_t reaches the classifier, same as the RNN class -- c_t is the
     # internal ledger, h_t is the gate-filtered "what's relevant to expose"

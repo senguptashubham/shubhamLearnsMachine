@@ -25,6 +25,14 @@ class HandRNNCell(nn.Module):
     h_t = F.tanh(x_t + h + self.bh)
     return h_t
 
+  def project_input(self, x):
+    x_proj = x @ self.Wxh.T
+    return x_proj
+
+  def step(self, x_proj_t, h_prev):
+    h = h_prev @ self.Whh.T
+    h_t = F.tanh(x_proj_t + h + self.bh)
+    return h_t
 
 if __name__ == "__main__":
   B, D, H = 2, 3, 4
@@ -87,3 +95,17 @@ if __name__ == "__main__":
 
   # expected pattern: ~0.0 (underflowed) far from the loss, nonzero close to it --
   # the vanishing gradient problem, observed directly rather than just asserted.
+  #compare result of old approach - forward and new approach - step with projected input
+  B, D, H, T = 2, 3, 4, 10
+  torch.manual_seed(42)
+  x_init = torch.randn(B, T, D)
+  h_init = torch.randn(B, H)
+  cell = HandRNNCell(input_dim=D, hidden_dim=H)
+  h_old = h_init
+  for t in range(T):
+    h_old = cell.forward(x_init[:,t], h_old)
+  h_new = h_init
+  x_proj = cell.project_input(x_init)
+  for t in range(T):
+    h_new = cell.step(x_proj[:,t], h_new)
+  print("Result: ", torch.allclose(h_old, h_new))
