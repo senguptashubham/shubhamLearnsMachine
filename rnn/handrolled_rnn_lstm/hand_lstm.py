@@ -47,7 +47,24 @@ class HandLSTMCell(nn.Module):
     c_t = c_t + (i_t * g_t) # same shape -> elementwise muliplication
     o_t = F.sigmoid(x_t @ self.Wo_x.T + h_prev @ self.Wo_h.T + self.bo)
     h_t = F.tanh(c_t) * o_t # same shape -> elementwise muliplication
-    return h_t, c_t 
+    return h_t, c_t
+
+  def project_input(self, x):
+    x_f = x @ self.Wf_x.T
+    x_i = x @ self.Wi_x.T
+    x_g = x @ self.Wg_x.T
+    x_o = x @ self.Wo_x.T
+    return {'x_f':x_f, 'x_i':x_i, 'x_g':x_g, 'x_o':x_o}
+
+  def step(self, xf, xi, xg, xo, h_prev, c_prev):
+    f_t = F.sigmoid(xf + h_prev @ self.Wf_h.T + self.bf)
+    c_t = c_prev * f_t
+    i_t = F.sigmoid(xi + h_prev @ self.Wi_h.T + self.bi)
+    g_t = F.tanh(xg + h_prev @ self.Wg_h.T + self.bg)
+    c_t = c_t + (i_t * g_t)
+    o_t = F.sigmoid(xo + h_prev @ self.Wo_h.T + self.bo)
+    h_t = F.tanh(c_t) * o_t
+    return h_t, c_t
 
 
 if __name__ == "__main__":
@@ -135,3 +152,21 @@ if __name__ == "__main__":
   # larger than h_t (short_memory) at the same index, since c_t's backward path is
   # a plain elementwise scale by f_t while h_t additionally passes through the
   # output gate and the full Wh matrices every step.
+  #compare result of old approach - forward and new approach - step with projected input
+  B, D, H, T = 2, 3, 4, 10
+  torch.manual_seed(42)
+  x_init = torch.randn(B, T, D)
+  h_init = torch.randn(B, H)
+  c_init = torch.randn(B, H)
+  cell = HandLSTMCell(input_dim=D, hidden_dim=H)
+  h_old = h_init
+  c_old = c_init
+  for t in range(T):
+    h_old, c_old = cell.forward(x_init[:,t], h_old, c_old)
+  h_new = h_init
+  c_new = c_init
+  x_dict = cell.project_input(x_init)
+  for t in range(T):
+    h_new, c_new = cell.step(x_dict['x_f'][:,t], x_dict['x_i'][:,t], x_dict['x_g'][:,t], x_dict['x_o'][:,t], h_new, c_new)
+  print("Result for h_old vs h_new: ", torch.allclose(h_old, h_new))
+  print("Result for c_old vs c_new: ", torch.allclose(c_old, c_new))
