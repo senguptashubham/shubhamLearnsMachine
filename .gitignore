@@ -6,3 +6,5 @@ __pycache__/
 cnn/cifar10/data/
 cnn/cifar10/results/checkpoints/
 rnn/sequential_mnist/data/
+rnn/shakespeare_charlm/data/
+rnn/shakespeare_charlm/checkpoints/
